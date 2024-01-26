@@ -33,3 +33,4 @@ To run a sdf file you use > ign gazebo randomFile.sdf.
 # Youtube tutorials with ROS and Gazebo
 
 [Matrix creature in gazebo](https://www.youtube.com/watch?v=ayp87SjrwPc&ab_channel=SwagatKumar)
+ [Universal robot simulation with moveit in gazebo](https://www.youtube.com/watch?v=ayp87SjrwPc&ab_channel=SwagatKumar)
