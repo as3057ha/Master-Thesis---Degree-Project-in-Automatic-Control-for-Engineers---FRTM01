@@ -19,3 +19,9 @@ The install instruction for Gazebo Fortress can be found [here](https://gazebosi
 ## Installing the compatability package ros-gz
 
 Install instruction can be found [here](https://gazebosim.org/docs/latest/ros_installation).
+
+
+# How to run Gazebo
+
+Instructions on running Gazebo can be found [here](https://gazebosim.org/docs/all/getstarted). But essentially you create sdf files which you then run with Gazebo.
+To run a sdf file you use > ign gazebo randomFile.sdf.
