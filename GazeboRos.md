@@ -1,6 +1,6 @@
 # How to setup Gazebo and Ros
 
-To setup Gazebo with ROS you have to install ROS, Gazebo and a package that facilitates communication inbetween them called ros-gz
+To setup Gazebo with ROS you have to install ROS, Gazebo and a package that facilitates communication inbetween them called ros-gz.
 
 There are different distributions of ROS and Gazebo, one can read about them and their compatability [here](https://gazebosim.org/docs/latest/ros_installation).
 
