@@ -29,3 +29,7 @@ To run a sdf file you use > ign gazebo randomFile.sdf.
 # An example of a Gazebo Simulation it the URE5
 
 [Pick and Place with URE5 in Gazebo](https://github.com/lihuang3/ur5_ROS-Gazebo)
+
+# Youtube tutorials with ROS and Gazebo
+
+[Matrix creature in gazebo](https://www.youtube.com/watch?v=ayp87SjrwPc&ab_channel=SwagatKumar)
