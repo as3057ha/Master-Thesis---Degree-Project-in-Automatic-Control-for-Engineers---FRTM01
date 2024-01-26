@@ -20,6 +20,8 @@ The install instruction for Gazebo Fortress can be found [here](https://gazebosi
 
 Install instruction can be found [here](https://gazebosim.org/docs/latest/ros_installation).
 
+# Descriptions of universal robots 
+[Descriptions of universal robots ](https://github.com/UniversalRobots/Universal_Robots_ROS2_Description)
 
 # How to run Gazebo
 
