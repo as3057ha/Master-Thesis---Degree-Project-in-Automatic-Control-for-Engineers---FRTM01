@@ -25,3 +25,7 @@ Install instruction can be found [here](https://gazebosim.org/docs/latest/ros_in
 
 Instructions on running Gazebo can be found [here](https://gazebosim.org/docs/all/getstarted). But essentially you create sdf files which you then run with Gazebo.
 To run a sdf file you use > ign gazebo randomFile.sdf.
+
+# An example of a Gazebo Simulation it the URE5
+
+[Pick and Place with URE5 in Gazebo](https://github.com/lihuang3/ur5_ROS-Gazebo)
