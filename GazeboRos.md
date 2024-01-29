@@ -35,4 +35,16 @@ To run a sdf file you use > ign gazebo randomFile.sdf.
 # Youtube tutorials with ROS and Gazebo
 
 - [Matrix creature in gazebo](https://www.youtube.com/watch?v=ayp87SjrwPc&ab_channel=SwagatKumar)
+
+## Youtube tutorial on how to run a UR5-Gazebo simulation ( using ROS 1 sadly)
+
 - [Universal robot simulation with moveit in gazebo](https://www.youtube.com/watch?v=ayp87SjrwPc&ab_channel=SwagatKumar)
+
+### Links mentioned in the tutorial as refrences
+- https://ros-planning.github.io/moveit_tutorials/
+- https://github.com/ros-industrial/universal_robot
+- https://github.com/lihuang3/ur5_ROS-Gazebo
+- https://wiki.ros.org/urdf/XML/link
+- https://sir.upc.edu/projects/rostutorials/10-gazebo_control_tutorial/index.html
+- https://www.theconstructsim.com/control-gazebo-simulated-robot-moveit-video-answer/
+- http://docs.ros.org/en/kinetic/api/moveit_tutorials/html/doc/quickstart_in_rviz/quickstart_in_rviz_tutorial.html
