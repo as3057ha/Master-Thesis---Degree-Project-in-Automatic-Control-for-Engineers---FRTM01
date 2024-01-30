@@ -25,6 +25,9 @@ Install instruction can be found [here](https://gazebosim.org/docs/latest/ros_in
 ## MOVEIT for humble
 - [MoveIT for Humble](https://moveit.picknik.ai/humble/doc/tutorials/getting_started/getting_started.html)
 
+Maybe building it from source it better
+- [How to build from source](https://moveit.ros.org/install-moveit2/source/)
+
 # Descriptions of universal robots 
 [Descriptions of universal robots ](https://github.com/UniversalRobots/Universal_Robots_ROS2_Description)
 
