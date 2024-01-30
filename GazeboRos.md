@@ -22,11 +22,13 @@ The install instruction for Gazebo Fortress can be found [here](https://gazebosi
 
 Install instruction can be found [here](https://gazebosim.org/docs/latest/ros_installation).
 
+## MOVEIT for humble
+- [MoveIT for Humble](https://moveit.picknik.ai/humble/doc/tutorials/getting_started/getting_started.html)
+
 # Descriptions of universal robots 
 [Descriptions of universal robots ](https://github.com/UniversalRobots/Universal_Robots_ROS2_Description)
 
-## MOVEIT for humble
-- [MoveIT for Humble](https://moveit.picknik.ai/humble/doc/tutorials/getting_started/getting_started.html)
+
   
 
 # How to run Gazebo
