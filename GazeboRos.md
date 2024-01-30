@@ -6,6 +6,8 @@ There are different distributions of ROS and Gazebo, one can read about them and
 
 As of writing it is recommended to use ROS 2 Humble (LTS) together with Gazebo Fortress (LTS).
 
+You also need MOPVEIT for humble.
+
 
 ## Installing ROS
 
@@ -22,6 +24,10 @@ Install instruction can be found [here](https://gazebosim.org/docs/latest/ros_in
 
 # Descriptions of universal robots 
 [Descriptions of universal robots ](https://github.com/UniversalRobots/Universal_Robots_ROS2_Description)
+
+## MOVEIT for humble
+- [MoveIT for Humble](https://moveit.picknik.ai/humble/doc/tutorials/getting_started/getting_started.html)
+  
 
 # How to run Gazebo
 
