@@ -4,7 +4,7 @@ from scipy.integrate import simps
 import os
 import datetime
 
-SAMPLE_TIME = 0.1
+SAMPLE_TIME = 50*np.power(10.0,-3)
 
 def generate_linear_acceleration(start_speed, end_speed, acceleration):
     t1 = (end_speed - start_speed) / acceleration
@@ -35,7 +35,6 @@ def generate_linear_deceleration(start_speed, end_speed, deceleration):
 
 def generate_constant_speed(speed, time_at_speed):
     t1 = time_at_speed
-
     # Time array
     time = np.linspace(0, t1, int(t1 / SAMPLE_TIME))
 
@@ -46,26 +45,38 @@ def generate_constant_speed(speed, time_at_speed):
     
     return velocity
 
+import numpy as np
+
 def generate_quadratic_acceleration(start_speed, top_speed, acc_time):
-    acceleration = (top_speed - start_speed) / acc_time
-    t1 = min(acc_time, top_speed / acceleration)  # Ensure we reach top_speed in acc_time
+    # Assume a quadratic acceleration model: a(t) = kt. We need to find k.
+    # To find k, we use the fact that top_speed = start_speed + (1/2)k(acc_time)^2
+    # Solving for k gives us k = 2*(top_speed - start_speed) / acc_time^2
+    k = 2 * (top_speed - start_speed) / acc_time**2
 
-    # Time array
-    time = np.linspace(0, t1, int(t1 / SAMPLE_TIME) + 1)
+    # Calculate time steps based on SAMPLE_TIME
+    time = np.linspace(0, acc_time, int(acc_time / SAMPLE_TIME) + 1)
 
-    velocity = start_speed + 0.5 * acceleration * time**2
+    # Calculate velocity at each time step using v = u + (1/2)kt^2
+    velocity = start_speed + 0.5 * k * time**2
 
     return velocity
 
-def generate_quadratic_deceleration(start_speed, top_speed, dec_time):
-    deceleration = start_speed / dec_time
-    t1 = min(dec_time, start_speed / deceleration)  # Ensure we reach zero speed in dec_time
 
-    # Time array
-    time = np.linspace(0, t1, int(t1 / SAMPLE_TIME) + 1)
+def generate_quadratic_deceleration(start_speed, dec_time):
+    # To ensure a quadratic deceleration to zero, we use the formula:
+    # velocity = start_speed - (k * t^2), where k is a constant that we need to determine
+    # The final velocity at t = dec_time should be 0, so we set up the equation:
+    # 0 = start_speed - k * dec_time^2, solving for k gives us:
+    k = start_speed / dec_time**2
 
-    velocity = start_speed - 0.5 * deceleration * time**2
-    velocity[velocity < 0] = 0  # Ensure velocity doesn't become negative
+    # Calculate the time steps based on SAMPLE_TIME
+    time = np.linspace(0, dec_time, int(dec_time / SAMPLE_TIME) + 1)
+
+    # Calculate velocity at each time step using the quadratic deceleration formula
+    velocity = start_speed - k * time**2
+
+    # Clip velocity at 0 to ensure it doesn't go negative
+    velocity[velocity < 0] = 0
 
     return velocity
 
@@ -82,7 +93,7 @@ def concatenate_velocity_vectors(velocity_vectors):
     return time, concatinated_velocity
 
 # Function to add noise to velocity data
-def add_noise(velocity, noise_level=0.005):
+def add_noise(velocity, noise_level=0.05):
     """
     Adds Gaussian noise to the velocity data.
 
@@ -98,14 +109,15 @@ def add_noise(velocity, noise_level=0.005):
     return velocity_with_noise
 
 def main():
-    addNoise = True
+    addNoise = False
     # Generate velocity data
     time, velocity = concatenate_velocity_vectors([
-        generate_quadratic_acceleration(0,0.5,2),
-        generate_constant_speed(0.5, 1),
-        generate_quadratic_deceleration(0.5,0,3)
+        generate_quadratic_acceleration(0,0.2,3),
+        generate_constant_speed(0.2, 5),
+        generate_quadratic_deceleration(0.2,1)
     ])
-    
+    print("hello world")
+    print(velocity)
     # Integrate velocity to get distance using Simpson's rule
     distance = simps(velocity, time)
     distance_meters = distance 

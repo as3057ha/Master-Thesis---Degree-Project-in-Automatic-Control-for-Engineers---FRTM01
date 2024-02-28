@@ -1,0 +1,105 @@
+#include <Arduino.h>
+
+// Define the connection pins
+const int dirPin = 8; // DIR- connected to pin 8
+const int pulPin = 9; // PUL- connected to pin 9
+
+// Define physical variables
+const float NUMBER_TEETH_A = 32;
+const float NUMBER_TEETH_B = 60;
+const float FEEDING_RADIUS = (30.0 - 1.427)*0.001; // In meters 
+
+// Define control variables
+const double STEPS_PER_REVOLUTION = 800; // Set this to the number of pulses per revolution as per DIP switch settings
+const double SAMPLE_TIME = 50; // In miliseconds
+
+
+
+// Define motor control variables
+int rpm = 0; // Base RPM
+double vTcp = 0;
+
+// Mock data
+float vectorData[] = {
+    0.0,5.555555555555557e-05,0.0002222222222222223,0.0005000000000000001,0.0008888888888888891,0.001388888888888889,0.0020000000000000005,0.002722222222222223,0.0035555555555555566,0.0045000000000000005,0.005555555555555556,0.006722222222222223,0.008000000000000002,0.00938888888888889,0.010888888888888892,0.0125,0.014222222222222226,0.01605555555555556,0.018000000000000002,0.02005555555555556,0.022222222222222223,0.0245,0.026888888888888893,0.029388888888888895,0.03200000000000001,0.034722222222222224,0.03755555555555556,0.04050000000000001,0.04355555555555557,0.046722222222222234,0.05,0.053388888888888895,0.056888888888888905,0.06050000000000001,0.06422222222222224,0.06805555555555556,0.07200000000000001,0.07605555555555557,0.08022222222222224,0.08450000000000002,0.08888888888888889,0.09338888888888892,0.098,0.10272222222222221,0.10755555555555557,0.1125,0.11755555555555558,0.12272222222222225,0.12800000000000003,0.13338888888888892,0.1388888888888889,0.14450000000000005,0.15022222222222223,0.15605555555555561,0.16200000000000003,0.16805555555555557,0.17422222222222228,0.18050000000000002,0.18688888888888894,0.19338888888888892,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.1995,0.198,0.1955,0.192,0.1875,0.182,0.1755,0.168,0.1595,0.15000000000000002,0.1395,0.128,0.11549999999999999,0.10199999999999998,0.08750000000000001,0.07199999999999998,0.055499999999999966,0.03799999999999998,0.01949999999999999,0.0
+    };
+int currentIndex = 0;
+
+int totalElements = sizeof(vectorData) / sizeof(vectorData[0]);
+
+void setup() {
+  pinMode(dirPin, OUTPUT);
+  pinMode(pulPin, OUTPUT);
+  digitalWrite(dirPin, HIGH);
+  digitalWrite(pulPin, LOW);
+  Serial.begin(9600); // Start serial communication for debugging
+  Serial.println("-------SYSTEM START------");
+  delay(3000);
+}
+
+void loop() {
+  // Adjust RPM with noise every 50ms
+
+  vTcp = readVTcp();
+  rpm = calculateRPM(vTcp);
+  // Serial.println("RPM: " + (String)rpm);
+  // Serial.println("vTcp: " + (String)vTcp);
+  // Serial.println("Current Index: " + (String)currentIndex);
+
+  unsigned long lastUpdateTime = millis(); // Last time the RPM was updated
+
+  while(true) { // Continuous loop
+    makeSingleStep(rpm);
+    unsigned long timeSinceUpdate = millis() - lastUpdateTime;
+    if (timeSinceUpdate >= SAMPLE_TIME){
+      //Serial.println("New Update. Time since update: " + String(timeSinceUpdate));
+      break;
+      }
+  }
+}
+
+void makeSingleStep(int rpm) {
+
+  if(rpm <= 0){
+
+  }else{
+    digitalWrite(pulPin, HIGH);
+    delayMicroseconds(5);
+    digitalWrite(pulPin, LOW);
+    delayMicroseconds(calculatePulseDelay(rpm));
+  }
+
+}
+
+long calculatePulseDelay(int rpm) {
+  // Calculate the delay between pulses to achieve the desired RPM
+  return 60L * 1000000L / STEPS_PER_REVOLUTION / rpm;
+}
+
+
+int generateRpmNoise() {
+  // Generate random noise between -5 and +5
+  return random(-5, 6); // random(min, max) generates a number between min and inclusive max-1
+}
+
+double readVTcp() {
+    // Check if all elements have been read
+    if (currentIndex >= totalElements) {
+        // Stop the main loop
+        Serial.println("-------SYSTEM STOPPED------");
+        while (true) {
+  
+          delay(1000);
+            // Do nothing, just keep the main loop running
+        }
+    }
+
+    // Return the current value and update the index for the next call
+    float currentValue = vectorData[currentIndex];
+    currentIndex++;
+    return currentValue;
+}
+
+double calculateRPM(double vTcp) {
+  return vTcp*60*NUMBER_TEETH_B/(FEEDING_RADIUS*2*PI*NUMBER_TEETH_A);}
+
