@@ -1,0 +1,48 @@
+MODULE Module1
+        CONST robtarget Target_10:=[[1027.512258983,0,1355.399997486],[0.499999994,0,0.866025407,0],[0,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget Target_20:=[[1027.511940557,815.569291057,1355.399992096],[0.500000005,-0.000000001,0.866025401,0.000000009],[0,-1,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget Target_30:=[[1027.511964352,-546.610476063,1355.399987395],[0.500000018,-0.000000003,0.866025393,0.000000007],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget Target_40:=[[1027.511942937,-1.395900989,712.123684577],[0.499999992,-0.000000003,0.866025408,0.000000007],[-1,-1,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    CONST robtarget Target_50:=[[1027.511963876,-1.395901014,1746.60694882],[0.499999983,-0.000000003,0.866025414,0.000000007],[-1,0,-1,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    
+    VAR string temp;
+    
+    !***********************************************************
+    !
+    ! Module:  Module1
+    !
+    ! Description:
+    !   <Insert description here>
+    !
+    ! Author: aslan
+    !
+    ! Version: 1.0
+    !
+    !***********************************************************
+    
+    
+    !***********************************************************
+    !
+    ! Procedure main
+    !
+    !   This is the entry point of your program
+    !
+    !***********************************************************
+    PROC main()
+        !Add your code here
+        temp := "Module1 is running";
+        TPWrite "Module1";
+        Path_10;
+    ENDPROC
+    PROC Path_10()
+        MoveJ Target_10,v1000,z100,Servo\WObj:=wobj0;
+        WaitTime 1;
+        MoveJ Target_20,v1000,z100,Servo\WObj:=wobj0;
+        WaitTime 1;
+        MoveJ Target_30,v1000,z100,Servo\WObj:=wobj0;
+        WaitTime 1;
+        MoveJ Target_40,v1000,z100,Servo\WObj:=wobj0;
+        WaitTime 1;
+        MoveJ Target_50,v1000,z100,Servo\WObj:=wobj0;
+    ENDPROC
+ENDMODULE

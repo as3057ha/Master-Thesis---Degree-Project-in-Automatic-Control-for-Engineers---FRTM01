@@ -1,0 +1,44 @@
+MODULE Module2
+    VAR socketdev temp_socket;
+    VAR socketdev client_socket;
+    VAR string received_string;
+    VAR bool keep_listening := TRUE;
+    VAR num TCP_velocity;
+    
+    
+    
+    
+    
+    PROC main()
+     Com;
+    ENDPROC
+    
+    PROC read_tcp_speed()
+        
+    ENDPROC
+    
+    PROC Com()
+    SocketCreate temp_socket;
+    !SocketBind temp_socket, "192.168.50.152", 1025; !Hemma
+    SocketBind temp_socket, "10.8.121.248", 1025; !LTH
+    SocketListen temp_socket;
+    SocketAccept temp_socket, client_socket;
+    
+     SocketReceive client_socket \Str:=received_string;
+     TPWrite "Client wrote - " + received_string;
+     received_string := "";
+        
+     WHILE keep_listening DO  
+        SocketSend client_socket \Str:="TCP_Velocity";
+       
+        SocketReceive client_socket \Str:=received_string;
+        
+!        Shutdown the connection when needed 
+!        TPWrite "Client wrote - " + received_string;
+!        SocketSend client_socket \Str:="Shutdown acknowledged";
+!        SocketClose client_socket;
+    ENDWHILE
+        SocketClose temp_socket;
+        ENDPROC
+
+ENDMODULE
