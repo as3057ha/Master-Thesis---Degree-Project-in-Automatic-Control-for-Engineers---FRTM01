@@ -48,7 +48,7 @@ boolean pulseOk = true;
 unsigned long nbrPulses = 0;
 unsigned long nbrSamples = 0;
 unsigned long testTime = 10;
-const float vTcp = 0.5; // Feeding speed in m/s
+const float vTcp = 0.0923333333333333; // Feeding speed in m/s
 
 // 
 bool speedBits[10];
