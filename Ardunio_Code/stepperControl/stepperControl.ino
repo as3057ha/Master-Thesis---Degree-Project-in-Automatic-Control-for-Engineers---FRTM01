@@ -5,7 +5,15 @@
 // Pin definition.
 const int dirPin = 8; // DIR- connected to pin 8
 const int pulPin = 9; // PUL- connected to pin 9
+const int RX = 0;
+const int TX = 1;
+const int speedBit1 = 2;
+const int speedBit2 = 3;
+const int speedBit3 = 4;
+const int speedBit4 = 5;
+const int speedBit5 = 6;
 
+uint16_t vTcp = 0;
 // Motor constants
 const float STEPS_PER_REVOLUTION = 800;
 
@@ -42,6 +50,9 @@ unsigned long nbrSamples = 0;
 unsigned long testTime = 10;
 const float vTcp = 0.5; // Feeding speed in m/s
 
+// 
+bool speedBits[10];
+
 void pulse()
 {
     
@@ -54,8 +65,43 @@ void pulse()
 
 }
 
+float readSpeed(){
+
+    digitalWrite(TX,HIGH);
+
+    while (digitalRead(RX) == LOW) {
+    // Do nothing while waiting
+    }
+    digitalWrite(TX,LOW);
+
+    // Read the five pins
+
+    digitalWrite(TX,HIGH);
+     
+    while (digitalRead(RX) == LOW) {
+    // Do nothing while waiting
+    }
+
+    digitalWrite(TX,LOW);
+
+    // Read the five pins again
+
+    // Concatinate results and interupretred them as a float and return
+}
+
+void readSpeedBits(bool* speedBits, int startPos) {
+    // Read the speed bits and store them in the array
+    speedBits[startPos] = digitalRead(speedBit1);
+    speedBits[startPos+1] = digitalRead(speedBit2);
+    speedBits[startPos+2] = digitalRead(speedBit3);
+    speedBits[startPos+3] = digitalRead(speedBit4);
+    speedBits[startPos+4] = digitalRead(speedBit5);
+}
+
+
 float calculatePulseDelay()
 {
+
     float feedSpeed;
     pulseOk = vTcp > 0 && vTcp <= 0.5;
     if (pulseOk){
@@ -77,6 +123,14 @@ void setup()
     // Setup pin modes and logic singals
     pinMode(dirPin, OUTPUT);
     pinMode(pulPin, OUTPUT);
+    pinMode(RX,INPUT);
+    pinMode(TX,OUTPUT);
+    pinMode(speedBit1,INPUT);
+    pinMode(speedBit2,INPUT);
+    pinMode(speedBit3,INPUT);
+    pinMode(speedBit4,INPUT);
+    pinMode(speedBit5,INPUT);
+
     digitalWrite(dirPin, HIGH);
     digitalWrite(pulPin, LOW);
 
