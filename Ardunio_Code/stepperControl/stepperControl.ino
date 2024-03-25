@@ -11,9 +11,9 @@ const int speedBit1 = 2;
 const int speedBit2 = 3;
 const int speedBit3 = 4;
 const int speedBit4 = 5;
-const int speedBit5 = 6;
 
-uint16_t vTcp = 0;
+
+
 // Motor constants
 const float STEPS_PER_REVOLUTION = 800;
 
@@ -48,10 +48,10 @@ boolean pulseOk = true;
 unsigned long nbrPulses = 0;
 unsigned long nbrSamples = 0;
 unsigned long testTime = 10;
-const float vTcp = 0.0923333333333333; // Feeding speed in m/s
+float vTcp = 0; // Feeding speed in m/s
 
 // 
-bool speedBits[10];
+bool speedBits[12];
 
 void pulse()
 {
@@ -67,35 +67,55 @@ void pulse()
 
 float readSpeed(){
 
-    digitalWrite(TX,HIGH);
+    // Read and save the bits in a vector.
+   readFourBits(speedBits,0);
+   readFourBits(speedBits,5);
+   readFourBits(speedBits,9);
 
-    while (digitalRead(RX) == LOW) {
-    // Do nothing while waiting
-    }
-    digitalWrite(TX,LOW);
-
-    // Read the five pins
-
-    digitalWrite(TX,HIGH);
-     
-    while (digitalRead(RX) == LOW) {
-    // Do nothing while waiting
-    }
-
-    digitalWrite(TX,LOW);
-
-    // Read the five pins again
-
-    // Concatinate results and interupretred them as a float and return
+   unsigned int fixedSpeed = bitsToInt();
+   float speed = bitsToFloat(fixedSpeed);
+    return speed;
 }
 
-void readSpeedBits(bool* speedBits, int startPos) {
+// Function to convert integer to float (fixed-point)
+float bitsToFloat(unsigned int intValue) {
+    // Fixed-point format: 8 integer bits, 4 fractional bits
+    // Convert integer part
+    int integerPart = intValue >> 4; // Shift right by 4 bits to get integer part
+    // Convert fractional part
+    float fractionalPart = ((intValue & 0xF) / 16.0f); // Mask with 0xF (15 in decimal) to get fractional part
+    // Combine integer and fractional parts
+    return integerPart + fractionalPart;
+}
+
+
+
+void readFourBits(bool* speedBits, int startPos) {
+
+    // Request speedInfo
+    digitalWrite(TX,HIGH);
+
+     while (digitalRead(RX) == LOW) {
+    // Do nothing while waiting
+    }
+    digitalWrite(TX,LOW);
+
     // Read the speed bits and store them in the array
     speedBits[startPos] = digitalRead(speedBit1);
     speedBits[startPos+1] = digitalRead(speedBit2);
     speedBits[startPos+2] = digitalRead(speedBit3);
     speedBits[startPos+3] = digitalRead(speedBit4);
-    speedBits[startPos+4] = digitalRead(speedBit5);
+}
+
+
+
+// Function to convert boolean vector to an integer
+unsigned int bitsToInt() {
+    unsigned int result = 0;
+    for (int i = 0; i < 12; i++) {
+        result |= (speedBits[11 - i] ? 1 : 0) << i;
+    }
+    return result;
 }
 
 
@@ -103,6 +123,8 @@ float calculatePulseDelay()
 {
 
     float feedSpeed;
+    // Change method for getting vTcp here
+    vTcp = readSpeed();
     pulseOk = vTcp > 0 && vTcp <= 0.5;
     if (pulseOk){
         feedSpeed = vTcp;
@@ -129,7 +151,6 @@ void setup()
     pinMode(speedBit2,INPUT);
     pinMode(speedBit3,INPUT);
     pinMode(speedBit4,INPUT);
-    pinMode(speedBit5,INPUT);
 
     digitalWrite(dirPin, HIGH);
     digitalWrite(pulPin, LOW);
@@ -148,7 +169,6 @@ void loop()
 {
     // Read current time
     currentTime = micros();
-
     // If: time to sample.
     if (currentTime >= nextSample)
     {
