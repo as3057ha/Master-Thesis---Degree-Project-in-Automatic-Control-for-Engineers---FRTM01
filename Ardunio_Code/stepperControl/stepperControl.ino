@@ -74,7 +74,7 @@ float readSpeed(){
 
    unsigned int fixedSpeed = bitsToInt();
    float speed = bitsToFloat(fixedSpeed);
-    return speed;
+    return speed/100;
 }
 
 // Function to convert integer to float (fixed-point)
