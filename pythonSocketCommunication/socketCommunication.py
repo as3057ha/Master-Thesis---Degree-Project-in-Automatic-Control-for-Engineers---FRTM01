@@ -10,7 +10,7 @@ def main():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
     # Connect to the server
-    client_socket.connect(('192.168.0.194', 55555))
+    client_socket.connect(('192.168.125.1', 55555))
     print("Connected")
     
     try:

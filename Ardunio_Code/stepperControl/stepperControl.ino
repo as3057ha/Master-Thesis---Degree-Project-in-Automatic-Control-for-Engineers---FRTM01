@@ -1,19 +1,27 @@
+#include <SPI.h>
+#include <Controllino.h>
 #include <Arduino.h>
 #include <math.h>
 #include <stdint.h>
+#include <SPI.h>
+#include <Ethernet.h>
+
+// Network varibles for socket communication
+// MAC address of the Controlino Opta
+byte mac[] = { 0x70, 0x4C, 0xA5, 0x01, 0x30, 0x01 };
+
+
+
+// IP address and port of the server
+IPAddress serverIP( 192,168,125,1);  // Replace with the IP address of your server
+int serverPort = 55555;  // Replace with the port used by your server
+
+EthernetClient client;
 
 // Pin definition.
-const int dirPin = 8; // DIR- connected to pin 8
-const int pulPin = 9; // PUL- connected to pin 9
-const int RX = 0;
-const int TX = 1;
-const int speedBit1 = 2;
-const int speedBit2 = 3;
-const int speedBit3 = 4;
-const int speedBit4 = 5;
-
-
-
+const int dirPin = 8; // DIR- Relay 0
+const int pulPin = 2; // PUL- Relay 1
+const int actPin = 27; // ACT - Relay 2 
 // Motor constants
 const float STEPS_PER_REVOLUTION = 800;
 
@@ -47,96 +55,65 @@ boolean pulseOk = true;
 // Debug and testing varibles
 unsigned long nbrPulses = 0;
 unsigned long nbrSamples = 0;
-unsigned long testTime = 10;
-float vTcp = 0; // Feeding speed in m/s
 
-// 
-bool speedBits[12];
+
+// Button Setup
+
+// Current and previous state of the button.
+int buttonState     = 0;
+int lastButtonState = 0;
+
+// Variables to implement button debouncing.
+unsigned long lastDebounceTime  = 0;
+unsigned long debounceDelay     = 50; // In ms
+
+// bool for switching the actuation
+bool actuate;
+
+
+// Running modes
+bool socketCommunicationOn = false;
+unsigned long testTime = 10;
+float vTcp = 0.06; // Feeding speed in m/s
+
 
 void pulse()
 {
-    
     if (pulseOk){
         nextPulse = currentTime + pulseWidth;
         digitalWrite(pulPin, HIGH);
         delayMicroseconds(5);
         digitalWrite(pulPin, LOW);
+        
     }
 
 }
 
-float readSpeed(){
-
-    // Read and save the bits in a vector.
-   readFourBits(speedBits,0);
-   readFourBits(speedBits,5);
-   readFourBits(speedBits,9);
-
-   unsigned int fixedSpeed = bitsToInt();
-   float speed = bitsToFloat(fixedSpeed);
-    return speed/100;
-}
-
-// Function to convert integer to float (fixed-point)
-float bitsToFloat(unsigned int intValue) {
-    // Fixed-point format: 8 integer bits, 4 fractional bits
-    // Convert integer part
-    int integerPart = intValue >> 4; // Shift right by 4 bits to get integer part
-    // Convert fractional part
-    float fractionalPart = ((intValue & 0xF) / 16.0f); // Mask with 0xF (15 in decimal) to get fractional part
-    // Combine integer and fractional parts
-    return integerPart + fractionalPart;
-}
-
-
-
-void readFourBits(bool* speedBits, int startPos) {
-
-    // Request speedInfo
-    digitalWrite(TX,HIGH);
-
-     while (digitalRead(RX) == LOW) {
-    // Do nothing while waiting
+float readSpead(){
+    float received_float;
+    while (client.available() >= sizeof(received_float)) {
+    client.read((byte*)&received_float, sizeof(received_float));
     }
-    digitalWrite(TX,LOW);
-
-    // Read the speed bits and store them in the array
-    speedBits[startPos] = digitalRead(speedBit1);
-    speedBits[startPos+1] = digitalRead(speedBit2);
-    speedBits[startPos+2] = digitalRead(speedBit3);
-    speedBits[startPos+3] = digitalRead(speedBit4);
+    Serial.print("VTcp: ");
+     Serial.println(received_float, 32);
+    return received_float;
 }
-
-
-
-// Function to convert boolean vector to an integer
-unsigned int bitsToInt() {
-    unsigned int result = 0;
-    for (int i = 0; i < 12; i++) {
-        result |= (speedBits[11 - i] ? 1 : 0) << i;
-    }
-    return result;
-}
-
 
 float calculatePulseDelay()
 {
 
     float feedSpeed;
-    // Change method for getting vTcp here
-    vTcp = readSpeed();
+    if( socketCommunicationOn){vTcp = readSpead();}
+
+
     pulseOk = vTcp > 0 && vTcp <= 0.5;
     if (pulseOk){
         feedSpeed = vTcp;
         nextSample = currentTime + SAMPLE_TIME_MICROS;
-        previousPulseWidth = pulseWidth;
         pulseWidth = (1 / feedSpeed) * PULSE_WIDTH_CONSTANT;
-        if(previousPulseWidth > pulseWidth){
-            nextPulse = nextPulse -previousPulseWidth +pulseWidth;
-            }
         return pulseWidth;
     }else{
-        return -1;
+        return (1 / 0.5) * PULSE_WIDTH_CONSTANT;
     }
 }
 
@@ -145,18 +122,46 @@ void setup()
     // Setup pin modes and logic singals
     pinMode(dirPin, OUTPUT);
     pinMode(pulPin, OUTPUT);
-    pinMode(RX,INPUT);
-    pinMode(TX,OUTPUT);
-    pinMode(speedBit1,INPUT);
-    pinMode(speedBit2,INPUT);
-    pinMode(speedBit3,INPUT);
-    pinMode(speedBit4,INPUT);
+    pinMode(actPin, OUTPUT);
+    pinMode(A12, INPUT);
 
-    digitalWrite(dirPin, HIGH);
+    // Initialize LED_BUILTIN as an output
+    pinMode(LED_BUILTIN, OUTPUT);
+
+    digitalWrite(dirPin, LOW);
     digitalWrite(pulPin, LOW);
+    digitalWrite(actPin, LOW);
 
     // Start serial communication
     Serial.begin(9600);
+
+    if( socketCommunicationOn){
+    
+    //Start the Ethernet connection
+    if (Ethernet.begin(mac) == 0) {
+    Serial.println("Failed to configure Ethernet using DHCP");
+    // No point in continuing, so do nothing forevermore:
+    for (;;)
+        ;
+    }
+    }
+
+    delay(1000); // Allow the Ethernet to initialize
+    Serial.println("Connecting to server...");
+
+
+    if(socketCommunicationOn){
+            // Connect to the server
+            if (client.connect(serverIP, serverPort)) {
+            Serial.println("Connected to server");
+            } else {
+            Serial.println("Connection to server failed");
+            // No point in continuing, so do nothing forevermore:
+            for (;;)
+                ;
+            }
+    }
+
     Serial.println("-------SYSTEM START------");
 
     // Sample and start test timer
@@ -167,6 +172,40 @@ void setup()
 
 void loop()
 {
+    // // Check button state
+    // int reading = digitalRead(A12);
+
+    //   // Check if button state has changed.
+    // if (reading != lastButtonState) {
+    //   lastDebounceTime = millis();
+    // }
+
+    // // Debouncing routine.
+    // if ((millis() - lastDebounceTime) > debounceDelay) {
+    //   if (reading != buttonState) {
+    //     buttonState = reading;
+
+    //     // Only increment the counter if the new button state is HIGH.
+    //     if (buttonState == HIGH) {
+            
+
+    //       if(actuate){
+    //         actuate = false;
+    //         digitalWrite(actPin,LOW);
+    //         digitalWrite(LED_BUILTIN, LOW);
+
+    //       }
+    //       else{
+    //         actuate = true;
+    //         digitalWrite(actPin,HIGH);
+    //         digitalWrite(LED_BUILTIN, HIGH);
+
+    //       }
+    //     }
+    //   }
+    // }
+    // // Save the current state as the last state, for next time through the loop.
+    // lastButtonState = reading;
     // Read current time
     currentTime = micros();
     // If: time to sample.
@@ -179,6 +218,7 @@ void loop()
     // If: time to pulse.
     if (currentTime >= nextPulse)
     {
+        
         pulse();
         nbrPulses++;
     }
@@ -205,6 +245,8 @@ void loop()
         // Infinite loop
         while (true)
         {
+          Serial.println("The End");
+          delay(1000);
         }
     }
 }
