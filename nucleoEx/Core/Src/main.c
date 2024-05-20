@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <math.h>
+#include <stdio.h> // Include stdio for debug prints
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,11 +32,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
 
 // Output pins
 #define PUL_PIN GPIO_PIN_7
@@ -68,36 +64,50 @@
 #define COM2_PIN GPIO_PIN_1
 #define COM2_PORT GPIOC
 
+// LED pins
+#define LD1_PIN GPIO_PIN_0
+#define LD1_PORT GPIOB
 
+#define LD2_PIN GPIO_PIN_7
+#define LD2_PORT GPIOB
 
+#define LD3_PIN GPIO_PIN_14
+#define LD3_PORT GPIOB
 
+// Timings
+#define LED_BLINK_INTERVAL 1000 // 1 second
+#define SAMPLE_TIME 50 // 50 ms
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
 
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-
 /* USER CODE BEGIN PV */
 
 // Constant declaration
 const double PPR_m = 800;
 const double PPR_enc = 800;
-const double R_feed = 45 *1e-3;
+const double R_feed = 45 * 1e-3;
 const double R_enc = 45 * 1e-3;
-const double N_f = 60;
-const double N_m = 32;
-const double C_pps = 2*M_PI*R_feed / (N_f*PPR_m);
-const long SAMPLE_TIME = 50;
+const double N_f = 34;
+const double N_m = 16;
+const double C_pps = 1000 * 2 * M_PI * R_feed *N_f / (N_f * PPR_m);
 
 // Variable to store feed speed
-float feedSpeed = 0.0; // Assuming it's declared elsewhere in your code
+float feedSpeed = 0.01; // Assuming it's declared elsewhere in your code
 
-// Pulse related variables.
+// Pulse related variables
 long currentTime;
 long nextSample;
-long nextPulse;
+long nextBlink;
 float pulseWidth;
+float nextPulse; // Declare nextPulse as float
 
-//PI controller
+// PI controller
 double Kp = 1;
 double Ki = 1;
 double prevError;
@@ -106,6 +116,7 @@ double integral;
 // Global variables for encoder count and direction
 volatile int encoder_count = 0;
 volatile int encoder_direction = 0;
+volatile long BLOB = 0;
 
 // Variables for time measurement
 volatile uint32_t last_interrupt_time = 0;
@@ -122,16 +133,17 @@ static void MX_GPIO_Init(void);
 // Function prototype for interrupt callback
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 
-// Calculation of pulse delay.
-double calculate_pulse_delay();
+// Calculation of pulse delay
+double calculate_pulse_delay(double adjustedFeedSpeed);
 
+// Calculation of actual feed speed
 double calculate_actual_feedSpeed();
-
-// Function prototype for microsecond delay
-void DWT_Delay_us(volatile uint32_t microseconds);
 
 // Pulse function
 void pulse();
+
+// Busy-wait delay function
+void delay_us(uint32_t us);
 
 /* USER CODE END PFP */
 
@@ -146,9 +158,7 @@ void pulse();
   */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MPU Configuration--------------------------------------------------------*/
@@ -160,14 +170,12 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
   /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -177,6 +185,12 @@ int main(void)
   // Setup pins
   HAL_GPIO_WritePin(DIR_PORT, DIR_PIN, GPIO_PIN_SET);
 
+  // Initialize timing variables
+  nextSample = HAL_GetTick() + SAMPLE_TIME;
+  nextPulse = (float)HAL_GetTick();
+  nextBlink = HAL_GetTick() + LED_BLINK_INTERVAL;
+
+  printf("Initialization complete. Starting main loop.\n");
 
   /* USER CODE END 2 */
 
@@ -184,29 +198,56 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    currentTime = HAL_GetTick();
 
-	  GPIO_PinState actuate = HAL_GPIO_ReadPin(COM1_PORT, COM1_PIN);
-	  GPIO_PinState feed = HAL_GPIO_ReadPin(COM2_PORT, COM2_PIN);
-	  if(feed){
+    // Blink LD3 every second to indicate the microcontroller is running
+    if (currentTime >= nextBlink) {
+      HAL_GPIO_TogglePin(LD3_PORT, LD3_PIN);
+      nextBlink = currentTime + LED_BLINK_INTERVAL;
+      printf("LD3 toggled at %ld ms\n", currentTime);
+    }
 
-	currentTime = HAL_GetTick();
-	// Checks if it is time to sample
-	if(currentTime >= nextSample){
-		HAL_GPIO_WritePin(ACT_PORT, ACT_PIN, GPIO_PIN_RESET);
+    // Check for feed input
+    GPIO_PinState feed = HAL_GPIO_ReadPin(COM2_PORT, COM2_PIN);
+    if (feed) {
+      HAL_GPIO_WritePin(LD1_PORT, LD1_PIN, GPIO_PIN_SET); // Indicate feeding with LD1
+      printf("Feeding detected at %ld ms\n", currentTime);
 
-	  double error = feedSpeed - calculate_actual_feedSpeed(feedSpeed);
-	  integral += error;
-	  double output = Kp*error + Ki*integral;
-	  pulseWidth = calculate_pulse_delay(output);
-	}
-	// Checks if it is time pulse
-	if(currentTime >= nextPulse){
-	  pulse();
-	}
-	  }
-	  else if(actuate){
-		  HAL_GPIO_WritePin(ACT_PORT, ACT_PIN, GPIO_PIN_SET);
-	  }
+      // Check if it's time to sample
+      if (currentTime >= nextSample) {
+        double actualFeedSpeed = calculate_actual_feedSpeed();
+        double error = feedSpeed - actualFeedSpeed;
+        integral += error;
+        double output = Kp * error + Ki * integral;
+        pulseWidth = calculate_pulse_delay(output);
+    	  //pulseWidth = calculate_pulse_delay(feedSpeed);
+
+
+        nextSample = currentTime + SAMPLE_TIME;
+        //printf("Sampling at %ld ms, Feed Speed: %f, Pulse Width: %f\n", currentTime, feedSpeed, pulseWidth);
+      }
+
+      // Check if it's time to pulse
+      if (currentTime >= nextPulse) {
+        pulse();
+        nextPulse = currentTime + (pulseWidth < 1 ? (long)(pulseWidth * 1000) : (long)pulseWidth);
+        //printf("Pulse generated at %ld ms, Next pulse at %ld ms\n", currentTime, nextPulse);
+      }
+    } else {
+      HAL_GPIO_WritePin(LD1_PORT, LD1_PIN, GPIO_PIN_RESET);
+    }
+
+    // Check for actuation input
+    GPIO_PinState actuate = HAL_GPIO_ReadPin(COM1_PORT, COM1_PIN);
+    if (actuate) {
+      HAL_GPIO_WritePin(ACT_PORT, ACT_PIN, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(LD2_PORT, LD2_PIN, GPIO_PIN_SET); // Indicate actuation with LD2
+      printf("Actuation detected at %ld ms\n", currentTime);
+    } else {
+      HAL_GPIO_WritePin(ACT_PORT, ACT_PIN, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(LD2_PORT, LD2_PIN, GPIO_PIN_RESET);
+    }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -263,57 +304,57 @@ void SystemClock_Config(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
-
-  /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOF, GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOF, GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PF1 PF2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_2;
+  GPIO_InitStruct.Pin = GPIO_PIN_1 | GPIO_PIN_2;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PF4 PF5 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5;
+  GPIO_InitStruct.Pin = GPIO_PIN_4 | GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PF7 PF8 PF9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9;
+  GPIO_InitStruct.Pin = GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PC0 PC1 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
+  GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_1;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /*Configure GPIO pins : PB0 PB7 PB14 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
 /* USER CODE BEGIN 4 */
 
 // Interrupt Service Routine for INTA
-/* USER CODE BEGIN 4 */
-
-// Interrupt Service Routine for INTA
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-
+	BLOB++;
     if (GPIO_Pin == INTA_PIN) // Check if interrupt is from INTA
     {
-
         // Determine direction of rotation by checking state of INTB
         if (HAL_GPIO_ReadPin(INTB_PORT, INTB_PIN) == GPIO_PIN_SET)
         {
@@ -324,43 +365,46 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
             encoder_direction = -1; // Counter-clockwise rotation
         }
         encoder_count += encoder_direction;
-
-        // You can add additional code here to handle the calculated RPM value
     }
+    // Toggle LED2 on interrupt
+	HAL_GPIO_TogglePin(LD2_PORT, LD2_PIN);
 }
 
 // Calculate the necessary pulse delay
-double calculate_pulse_delay(double adjustedFeedSpeed){
-	nextSample = currentTime + SAMPLE_TIME;
-	pulseWidth = (1 / adjustedFeedSpeed) * C_pps;
-	return pulseWidth;
+double calculate_pulse_delay(double adjustedFeedSpeed)
+{
+    pulseWidth = (1 / adjustedFeedSpeed) * C_pps;
+    return pulseWidth;
 }
 
-// Pulse pul pin
-void pulse(){
-	nextPulse = currentTime + pulseWidth;
-	HAL_GPIO_WritePin(PUL_PORT, PUL_PIN, GPIO_PIN_SET); // Set pulse pin high
-	//DWT_Delay_us(5); // Delay for 5 microseconds
-	HAL_GPIO_WritePin(PUL_PORT, PUL_PIN, GPIO_PIN_RESET); // Set pulse pin low
+// Pulse pulse pin
+void pulse()
+{
+    HAL_GPIO_WritePin(PUL_PORT, PUL_PIN, GPIO_PIN_SET); // Set pulse pin high
+    delay_us(1); // Short delay
+    HAL_GPIO_WritePin(PUL_PORT, PUL_PIN, GPIO_PIN_RESET); // Set pulse pin low
 }
 
-// Function for microsecond delay using DWT cycle counter
-void DWT_Delay_us(volatile uint32_t microseconds) {
-    uint32_t clk_cycle_start = DWT->CYCCNT;
-    // Delay loop
-    while ((DWT->CYCCNT - clk_cycle_start) < microseconds * (SystemCoreClock / 1000000));
+// Busy-wait delay function
+void delay_us(uint32_t us)
+{
+    uint32_t start = HAL_GetTick();
+    while ((HAL_GetTick() - start) < us) {
+        // Do nothing, just wait
+    }
 }
 
-double calculate_actual_feedSpeed(){
+// Calculate the actual feed speed
+double calculate_actual_feedSpeed()
+{
     double vFeedActual = 0.0;
-    if (encoder_count != 0) {
+    if (encoder_count != 0)
+    {
         vFeedActual = 2 * M_PI * R_enc * PPR_enc * SAMPLE_TIME * 1e-3 / (60 * encoder_count);
     }
     encoder_count = 0;
     return vFeedActual;
 }
-
-
 
 /* USER CODE END 4 */
 
